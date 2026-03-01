@@ -3,10 +3,6 @@ name: CI Pipeline
 on:
     push:
         branches: ["main"]
-        paths:
-            - "scripts/**"
-            - "src/**"
-            - "requirements.txt"
     pull_request:
         branches: ["main"]
     workflow_dispatch:
@@ -34,34 +30,46 @@ jobs:
                     - name: sample_analysis
                       path: src/sample_analysis.py
 
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.module == 'all' || github.event.inputs.module == matrix.name }}
-
         steps:
-            - name: Завантаження коду
+            # 1. Перевіряємо умову на рівні кроку (тут matrix вже доступна)
+            - name: Перевірка умов запуску
+              run: |
+                  if [ "${{ github.event_name }}" != "workflow_dispatch" ] || [ "${{ github.event.inputs.module }}" == "all" ] || [ "${{ github.event.inputs.module }}" == "${{ matrix.name }}" ]; then
+                    echo "SHOULD_RUN=true" >> "$GITHUB_ENV"
+                  else
+                    echo "SHOULD_RUN=false" >> "$GITHUB_ENV"
+                  fi
+
+            # 2. Усі наступні кроки виконуються ТІЛЬКИ якщо умова вище сказала 'true'
+            - name: Checkout
+              if: env.SHOULD_RUN == 'true'
               uses: actions/checkout@v4
 
-            - name: Налаштування Python
+            - name: Setup Python
+              if: env.SHOULD_RUN == 'true'
               uses: actions/setup-python@v5
               with:
                   python-version: "3.11"
                   cache: "pip"
 
-            - name: Встановлення залежностей
+            - name: Install dependencies
+              if: env.SHOULD_RUN == 'true'
               run: |
                   python -m pip install --upgrade pip
                   if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-            - name: Підготовка даних (тільки для модуля аналізу)
-              if: matrix.name == 'sample_analysis'
+            - name: Prepare data (only for sample_analysis)
+              if: env.SHOULD_RUN == 'true' && matrix.name == 'sample_analysis'
               run: python scripts/get_data.py
 
-            - name: Запуск модуля
+            - name: Run module
+              if: env.SHOULD_RUN == 'true'
               run: |
                   mkdir -p artifacts/${{ matrix.name }}
-                  # Запускаємо основний скрипт (get_data або sample_analysis)
                   python ${{ matrix.path }} > artifacts/${{ matrix.name }}/run.log 2>&1
 
-            - name: Збереження результатів (Артефакти - Частина В)
+            - name: Upload artifacts
+              if: env.SHOULD_RUN == 'true'
               uses: actions/upload-artifact@v4
               with:
                   name: results-${{ matrix.name }}
