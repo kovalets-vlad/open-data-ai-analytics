@@ -1,0 +1,68 @@
+name: CI Pipeline
+
+on:
+    push:
+        branches: ["main"]
+        paths:
+            - "scripts/**"
+            - "src/**"
+            - "requirements.txt"
+    pull_request:
+        branches: ["main"]
+    workflow_dispatch:
+        inputs:
+            module:
+                description: "Оберіть модуль (або 'all')"
+                required: true
+                default: "all"
+                type: choice
+                options:
+                    - all
+                    - get_data
+                    - sample_analysis
+
+jobs:
+    run-modules:
+        runs-on: ubuntu-latest
+
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: get_data
+                      path: scripts/get_data.py
+                    - name: sample_analysis
+                      path: src/sample_analysis.py
+
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.module == 'all' || github.event.inputs.module == matrix.name }}
+
+        steps:
+            - name: Завантаження коду
+              uses: actions/checkout@v4
+
+            - name: Налаштування Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+                  cache: "pip"
+
+            - name: Встановлення залежностей
+              run: |
+                  python -m pip install --upgrade pip
+                  if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+            - name: Підготовка даних (тільки для модуля аналізу)
+              if: matrix.name == 'sample_analysis'
+              run: python scripts/get_data.py
+
+            - name: Запуск модуля
+              run: |
+                  mkdir -p artifacts/${{ matrix.name }}
+                  # Запускаємо основний скрипт (get_data або sample_analysis)
+                  python ${{ matrix.path }} > artifacts/${{ matrix.name }}/run.log 2>&1
+
+            - name: Збереження результатів (Артефакти - Частина В)
+              uses: actions/upload-artifact@v4
+              with:
+                  name: results-${{ matrix.name }}
+                  path: artifacts/${{ matrix.name }}
