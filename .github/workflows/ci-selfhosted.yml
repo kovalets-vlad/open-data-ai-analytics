@@ -2,39 +2,72 @@ name: CI Pipeline (Self-hosted)
 
 on:
     workflow_dispatch:
+        inputs:
+            module:
+                description: "Оберіть модуль (або 'all')"
+                required: true
+                default: "all"
+                type: choice
+                options:
+                    - all
+                    - get_data
+                    - sample_analysis
 
 jobs:
-    local_analysis:
+    run-modules:
         runs-on: [self-hosted, windows]
 
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: get_data
+                      path: scripts\get_data.py
+                    - name: sample_analysis
+                      path: src\sample_analysis.py
+
         steps:
+            - name: Перевірка умов запуску
+              run: |
+                  if ("${{ github.event_name }}" -ne "workflow_dispatch" -or "${{ github.event.inputs.module }}" -eq "all" -or "${{ github.event.inputs.module }}" -eq "${{ matrix.name }}") {
+                    Add-Content -Path $env:GITHUB_ENV -Value "SHOULD_RUN=true"
+                  } else {
+                    Add-Content -Path $env:GITHUB_ENV -Value "SHOULD_RUN=false"
+                  }
+
             - name: Завантаження коду
+              if: env.SHOULD_RUN == 'true'
               uses: actions/checkout@v4
 
             - name: Налаштування Python
+              if: env.SHOULD_RUN == 'true'
               uses: actions/setup-python@v5
               with:
                   python-version: "3.11"
                   cache: "pip"
 
-            - name: Встановлення залежностей (PowerShell синтаксис)
+            - name: Встановлення залежностей
+              if: env.SHOULD_RUN == 'true'
               run: |
                   python -m pip install --upgrade pip
                   if (Test-Path requirements.txt) { pip install -r requirements.txt }
 
-            - name: Запуск локального аналізу
+            - name: Підготовка даних (тільки для модуля аналізу)
+              if: env.SHOULD_RUN == 'true'
               run: |
-                  # Створюємо папку в стилі Windows
-                  New-Item -ItemType Directory -Force -Path "artifacts\analysis"
+                  if ("${{ matrix.name }}" -eq "sample_analysis") {
+                    python scripts\get_data.py
+                  }
 
-                  # Спочатку качаємо дані
-                  python scripts\get_data.py
+            - name: Запуск модуля
+              if: env.SHOULD_RUN == 'true'
+              run: |
+                  New-Item -ItemType Directory -Force -Path "artifacts\${{ matrix.name }}"
+                  python ${{ matrix.path }} > artifacts\${{ matrix.name }}\run.log 2>&1
 
-                  # Потім запускаємо аналіз і пишемо лог
-                  python src\sample_analysis.py > artifacts\analysis\run.log 2>&1
-
-            - name: Збереження результатів
+            - name: Збереження результатів (Артефакти)
+              if: env.SHOULD_RUN == 'true'
               uses: actions/upload-artifact@v4
               with:
-                  name: local-analysis-results
-                  path: artifacts\analysis
+                  name: local-results-${{ matrix.name }}
+                  path: artifacts\${{ matrix.name }}
