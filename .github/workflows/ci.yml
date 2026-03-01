@@ -5,7 +5,7 @@ on:
         branches: ["main"]
     pull_request:
         branches: ["main"]
-    workflow_dispatch: # Дозволяє запускати вручну кнопкою
+    workflow_dispatch:
 
 jobs:
     # --- JOB 1: Завантаження даних ---
@@ -28,19 +28,18 @@ jobs:
 
             - name: Запуск скрипта завантаження
               run: |
-                  # Запускаємо твій перший файл
-                  python -m download_data
+                  # Вказуємо правильний шлях до файлу в папці scripts
+                  python scripts/get_data.py
 
             - name: Збереження завантаженого датасету
               uses: actions/upload-artifact@v4
               with:
                   name: raw-dataset
-                  # ТУТ ВАЖЛИВО: вкажи шлях, куди твій download_data.py зберігає csv файл
                   path: open-data-ai-analytics/data/raw/
 
     # --- JOB 2: Аналіз даних ---
     analysis:
-        needs: download_data # ВАЖЛИВО: Цей крок чекає на успішне завершення першого
+        needs: download_data
         runs-on: ubuntu-latest
         steps:
             - name: Завантаження коду
@@ -66,8 +65,8 @@ jobs:
             - name: Запуск аналізу
               run: |
                   mkdir -p artifacts/analysis
-                  # Запускаємо другий файл і зберігаємо текстовий вивід у лог
-                  python -m analysis > artifacts/analysis/run.log 2>&1
+                  # Вказуємо правильний шлях до файлу в папці src
+                  python src/sample_analysis.py > artifacts/analysis/run.log 2>&1
 
             - name: Збереження результатів аналізу
               uses: actions/upload-artifact@v4
