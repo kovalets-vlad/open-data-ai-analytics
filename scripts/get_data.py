@@ -24,9 +24,9 @@ def download_data():
                 for chunk in r.iter_content(chunk_size=8192):
                     if chunk: 
                         f.write(chunk)
-        print(f"✅ Дані успішно збережено: {save_path}")
+        print(f"[OK] Дані успішно збережено: {save_path}")
     except Exception as e:
-        print(f"❌ Помилка завантаження: {e}")
+        print(f"[ERROR] Помилка завантаження: {e}")
 
 if __name__ == "__main__":
     download_data()

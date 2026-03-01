@@ -14,11 +14,12 @@ on:
                     - sample_analysis
 
 jobs:
-    run-modules:
+    run-modules: # Назва завдання
         runs-on: [self-hosted, windows]
 
         strategy:
             fail-fast: false
+            max-parallel: 1 # Щоб уникнути конфліктів доступу до файлів на Windows
             matrix:
                 include:
                     - name: get_data
@@ -26,7 +27,7 @@ jobs:
                     - name: sample_analysis
                       path: src\sample_analysis.py
 
-        steps:
+        steps: # Тепер steps чітко всередині run-modules
             - name: Перевірка умов запуску
               run: |
                   if ("${{ github.event_name }}" -ne "workflow_dispatch" -or "${{ github.event.inputs.module }}" -eq "all" -or "${{ github.event.inputs.module }}" -eq "${{ matrix.name }}") {
@@ -35,16 +36,19 @@ jobs:
                     Add-Content -Path $env:GITHUB_ENV -Value "SHOULD_RUN=false"
                   }
 
-            - name: Завантаження коду
+            - name: Завантаження коду (Локальний метод)
               if: env.SHOULD_RUN == 'true'
-              uses: actions/checkout@v4
+              run: |
+                  if (Test-Path .git) {
+                    git fetch origin main
+                    git reset --hard origin/main
+                  } else {
+                    git clone https://github.com/kovalets-vlad/open-data-ai-analytics.git .
+                  }
 
             - name: Налаштування Python
               if: env.SHOULD_RUN == 'true'
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.11"
-                  cache: "pip"
+              run: python --version
 
             - name: Встановлення залежностей
               if: env.SHOULD_RUN == 'true'
@@ -61,9 +65,11 @@ jobs:
 
             - name: Запуск модуля
               if: env.SHOULD_RUN == 'true'
+              env:
+                  PYTHONIOENCODING: "utf-8"
               run: |
-                  New-Item -ItemType Directory -Force -Path "artifacts\${{ matrix.name }}"
-                  python ${{ matrix.path }} > artifacts\${{ matrix.name }}\run.log 2>&1
+                  if (-not (Test-Path "artifacts/${{ matrix.name }}")) { New-Item -ItemType Directory -Path "artifacts/${{ matrix.name }}" -Force }
+                  python "${{ matrix.path }}"
 
             - name: Збереження результатів (Артефакти)
               if: env.SHOULD_RUN == 'true'
