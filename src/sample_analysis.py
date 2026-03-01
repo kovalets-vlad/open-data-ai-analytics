@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 sns.set_theme(style="whitegrid")
 plt.rcParams['figure.figsize'] = (12, 6)
 
-df = pd.read_csv('open-data-ai-analytics/data/raw/medical_data.csv')
+df = pd.read_csv('open-data-ai-analytics/data/raw/equipment_data.csv')
 
 missing_data = df.isnull().sum()
 missing_percent = (df.isnull().sum() / len(df)) * 100
