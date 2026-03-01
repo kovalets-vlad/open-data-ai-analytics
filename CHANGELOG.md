@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.3] - 2026-03-01
+
+### Added
+
+- **Hybrid CI/CD Infrastructure**:
+    - Added support for **Self-hosted Windows Runners** to leverage local hardware power.
+    - Implemented **Matrix Strategy** with `max-parallel: 1` to ensure sequential execution on local machines.
+- **Environment Stability**:
+    - Added `PYTHONIOENCODING="utf-8"` to handle Unicode/Emoji logging in Windows terminals.
+    - Switched to a robust local Git-fetch method to bypass `actions/checkout` EBUSY locks.
+
+### Fixed
+
+- **EBUSY Resource Lock**: Resolved "File busy" errors on Windows by disabling aggressive workspace cleaning.
+- **UnicodeEncodeError**: Fixed pipeline crashes caused by emoji logging in non-UTF-8 environments.
+- **Artifact Path Mismatch**: Aligned Python save paths with GitHub Action upload paths.
+
 ## [0.1.2] - 2026-02-23
 
 ### Added
