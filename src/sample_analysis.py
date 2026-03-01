@@ -72,7 +72,8 @@ plt.figure(figsize=(10, 6))
 plot_data = df.dropna(subset=['equipment_age', 'wearPercentage'])
 sns.scatterplot(data=plot_data, x='equipment_age', y='wearPercentage', alpha=0.3, color='royalblue')
 plt.title('Hypothesis 1: Equipment Age vs Wear Percentage')
-plt.show()
+plt.savefig('artifacts/analysis/hypothesis_1_age_vs_wear.png')
+plt.close() # Очищає пам'ять
 
 # Гіпотеза 2: Asset Structure
 df['serviceSubgroupTitle'] = df['serviceSubgroupTitle'].fillna('Unknown')
@@ -80,7 +81,8 @@ top_subgroups = df.groupby('serviceSubgroupTitle')['primaryAmountValue'].sum().s
 plt.figure(figsize=(12, 7))
 sns.barplot(x=top_subgroups.values, y=top_subgroups.index, palette='viridis')
 plt.title('Hypothesis 2: Asset Structure (Top 10 Subgroups)')
-plt.show()
+plt.savefig('artifacts/analysis/hypothesis_2_top_10_subgroups.png')
+plt.close() # Очищає пам'ять
 
 # --- 4. Побудова моделі (Machine Learning) ---
 
