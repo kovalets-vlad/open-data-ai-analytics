@@ -15,7 +15,10 @@ on:
                 options:
                     - all
                     - get_data
-                    - sample_analysis
+                    - data_load
+                    - data_quality_analysis
+                    - data_research
+                    - visualization
 
 jobs:
     run-modules:
@@ -27,11 +30,16 @@ jobs:
                 include:
                     - name: get_data
                       path: scripts/get_data.py
-                    - name: sample_analysis
-                      path: src/sample_analysis.py
+                    - name: data_load
+                      path: src/data_load/data_load.py
+                    - name: data_quality_analysis
+                      path: src/data_quality_analysis/data_quality_analysis.py
+                    - name: data_research
+                      path: src/data_research/data_research.py
+                    - name: visualization
+                      path: src/visualization/visualization.py
 
         steps:
-            # 1. Перевіряємо умову на рівні кроку (тут matrix вже доступна)
             - name: Перевірка умов запуску
               run: |
                   if [ "${{ github.event_name }}" != "workflow_dispatch" ] || [ "${{ github.event.inputs.module }}" == "all" ] || [ "${{ github.event.inputs.module }}" == "${{ matrix.name }}" ]; then
@@ -40,7 +48,6 @@ jobs:
                     echo "SHOULD_RUN=false" >> "$GITHUB_ENV"
                   fi
 
-            # 2. Усі наступні кроки виконуються ТІЛЬКИ якщо умова вище сказала 'true'
             - name: Checkout
               if: env.SHOULD_RUN == 'true'
               uses: actions/checkout@v4
@@ -58,14 +65,19 @@ jobs:
                   python -m pip install --upgrade pip
                   if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-            - name: Prepare data (only for sample_analysis)
-              if: env.SHOULD_RUN == 'true' && matrix.name == 'sample_analysis'
+            - name: Download raw data (Dependency)
+              if: env.SHOULD_RUN == 'true' && matrix.name != 'get_data'
               run: python scripts/get_data.py
 
-            - name: Run module
+            - name: Preprocess data (Dependency)
+              if: env.SHOULD_RUN == 'true' && matrix.name != 'get_data' && matrix.name != 'data_load'
+              run: python src/data_load/data_load.py
+
+            - name: Run target module
               if: env.SHOULD_RUN == 'true'
               run: |
                   mkdir -p artifacts/${{ matrix.name }}
+                  # Виконуємо скрипт і записуємо консольний вивід у лог-файл
                   python ${{ matrix.path }} > artifacts/${{ matrix.name }}/run.log 2>&1
 
             - name: Upload artifacts
