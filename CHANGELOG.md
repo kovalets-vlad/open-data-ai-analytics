@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.1.4] - 2026-03-23
+
+### Added
+
+- **Microservices Architecture**:
+    - Containerized all application modules using **Docker** and **Docker Compose**.
+    - Introduced **PostgreSQL 15** as the primary database for structured data storage.
+    - Added a **Flask-based Web Dashboard** for real-time results and visualization access.
+- **Docker Orchestration**:
+    - Implemented `compose.yaml` to manage service dependencies, health checks, and networks.
+    - Added **Docker Volumes** (`reports_data`, `plots_data`) for persistent data exchange between containers.
+- **Advanced Docker CI Pipeline**:
+    - Implemented dynamic container ID detection for robust artifact extraction in GitHub Actions.
+    - Added automated `.env` generation for secure and isolated testing environments.
+
+### Changed
+
+- **Database Migration**: Successfully migrated the data layer from local SQLite to a production-ready **PostgreSQL** container.
+- **Artifact Management**: Switched from direct path uploads to a "Container-to-Host" extraction strategy using `docker cp`.
+- **Project Structure**: Reorganized the codebase into a `src/` modular directory layout for better container context.
+
+### Fixed
+
+- **Container Path Mismatch**: Resolved "File not found" errors by aligning host data mounting with internal container paths.
+- **Service Race Conditions**: Implemented `depends_on` with `service_healthy` conditions to ensure DB readiness before data loading.
+- **Data Ingestion**: Fixed raw data path resolution in the CI environment using automated file relocation scripts.
+
+### Changed
+
+- **Database Migration**: Successfully migrated the data layer from local SQLite to a production-ready **PostgreSQL** container.
+- **Artifact Management**: Switched from direct path uploads to a "Container-to-Host" extraction strategy using `docker cp`.
+- **Project Structure**: Reorganized the codebase into a `src/` modular directory layout for better container context.
+
+### Fixed
+
+- **Container Path Mismatch**: Resolved "File not found" errors by aligning host data mounting with internal container paths.
+- **Service Race Conditions**: Implemented `depends\_
+
 ## [0.1.3] - 2026-03-01
 
 ### Added
