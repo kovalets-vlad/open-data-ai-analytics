@@ -16,7 +16,7 @@ jobs:
 
             - name: Prepare raw data
               run: |
-                  mkdir -p data
+                  mkdir -p data/raw
                   if [ -f scripts/get_data.py ]; then python scripts/get_data.py; fi
 
             - name: Create dummy .env file
@@ -33,26 +33,29 @@ jobs:
                   docker compose up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
 
             - name: Extract artifacts directly from containers
+              if: always()
               run: |
                   mkdir -p final_results/reports
                   mkdir -p final_results/plots
 
+                  # Отримуємо ID контейнерів за назвою сервісу з compose.yaml
                   ID_QUALITY=$(docker compose ps -qa data_quality_analysis)
                   ID_RESEARCH=$(docker compose ps -qa data_research)
                   ID_VISUAL=$(docker compose ps -qa visualization)
 
-                  # Копіюємо конкретні файли, а не папки (це надійніше)
-                  echo "Копіювання звітів..."
-                  docker cp ${ID_QUALITY}:/app/reports/quality_report.json ./final_results/reports/ || echo "Quality report not found"
-                  docker cp ${ID_RESEARCH}:/app/reports/research_report.json ./final_results/reports/ || echo "Research report not found"
+                  echo "Контейнери знайдено: Quality=$ID_QUALITY, Research=$ID_RESEARCH, Visual=$ID_VISUAL"
 
-                  echo "Копіювання графіків..."
-                  # Копіюємо весь вміст папки plots
+                  docker cp ${ID_QUALITY}:/app/reports/. ./final_results/reports/ || echo "Quality reports not found"
+                  docker cp ${ID_RESEARCH}:/app/reports/. ./final_results/reports/ || echo "Research reports not found"
                   docker cp ${ID_VISUAL}:/app/plots/. ./final_results/plots/ || echo "Plots not found"
 
-                  echo "--- ФІНАЛЬНА ПЕРЕВІРКА ВМІСТУ ПАПОК: ---"
+                  echo "--- СТРУКТУРА ЗІБРАНИХ АРТЕФАКТІВ ---"
                   find ./final_results -maxdepth 3 -not -path '*/.*'
-                  echo "----------------------------------------"
+                  echo "-------------------------------------"
+
+            - name: Show Docker Logs on Failure
+              if: failure()
+              run: docker compose logs
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
