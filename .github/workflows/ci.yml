@@ -16,11 +16,25 @@ jobs:
 
             - name: Prepare raw data
               run: |
-                  python scripts/get_data.py
-                  echo "=== DATA CHECK ==="
-                  ls -R data
+                  mkdir -p data/raw
 
-            - name: Create .env
+                  # Запускаємо ваш скрипт завантаження
+                  if [ -f scripts/get_data.py ]; then 
+                    python scripts/get_data.py
+                  fi
+
+                  # ФІКС: Якщо файл зберігся в open-data-ai-analytics/data/raw/, 
+                  # переносимо його в корінь ./data/raw/ щоб Docker його побачив
+                  if [ -d "open-data-ai-analytics/data/raw" ]; then
+                    cp -r open-data-ai-analytics/data/raw/. ./data/raw/
+                  fi
+
+                  # ПЕРЕВІРКА: ми маємо побачити файл тут перед запуском Docker
+                  echo "--- ПЕРЕВІРКА ПАПКИ DATA (на хості) ---"
+                  ls -R data/
+                  echo "---------------------------------------"
+
+            - name: Create dummy .env file
               run: |
                   echo "POSTGRES_USER=postgres" >> .env
                   echo "POSTGRES_PASSWORD=admin" >> .env
@@ -29,43 +43,38 @@ jobs:
                   echo "POSTGRES_PORT=5432" >> .env
                   echo "DATABASE_URL=postgresql://postgres:admin@db:5432/equipment_db" >> .env
 
-            - name: Run Data Pipeline
+            - name: Run Data Pipeline via Docker
               run: |
                   docker compose up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
 
-            - name: Check Container Logs
+            - name: Extract artifacts directly from containers
               if: always()
               run: |
-                  echo "--- LOGS: DATA LOAD ---"
-                  docker logs module_data_load || true
-                  echo "--- LOGS: QUALITY ANALYSIS ---"
-                  docker logs module_data_quality || true
-                  echo "--- LOGS: RESEARCH ---"
-                  docker logs module_data_research || true
-                  echo "--- LOGS: VISUALIZATION ---"
-                  docker logs module_visualization || true
+                  mkdir -p final_results/reports
+                  mkdir -p final_results/plots
 
-            - name: Extract artifacts
-              if: always()
+                  # Отримуємо ID контейнерів
+                  ID_QUALITY=$(docker compose ps -qa data_quality_analysis)
+                  ID_RESEARCH=$(docker compose ps -qa data_research)
+                  ID_VISUAL=$(docker compose ps -qa visualization)
+
+                  echo "Знайдені ID: Quality=$ID_QUALITY, Research=$ID_RESEARCH, Visual=$ID_VISUAL"
+
+                  # Копіюємо звіти та графіки
+                  docker cp ${ID_QUALITY}:/app/reports/. ./final_results/reports/ || echo "No quality reports"
+                  docker cp ${ID_RESEARCH}:/app/reports/. ./final_results/reports/ || echo "No research reports"
+                  docker cp ${ID_VISUAL}:/app/plots/. ./final_results/plots/ || echo "No plots found"
+
+                  # ДЕБАГ: Показуємо структуру того, що дістали
+                  echo "--- СТРУКТУРА ЗІБРАНИХ АРТЕФАКТІВ ---"
+                  find ./final_results -maxdepth 3 -not -path '*/.*'
+                  echo "-------------------------------------"
+
+            - name: Show Docker Logs on Failure
+              if: failure()
               run: |
-                  mkdir -p final_results
-
-                  echo "=== COPY FROM VOLUMES ==="
-
-                  docker run --rm \
-                      -v reports_data:/reports \
-                      -v $(pwd)/final_results:/out \
-                      alpine \
-                      sh -c "cp -r /reports/* /out/ || true"
-
-                  docker run --rm \
-                      -v plots_data:/plots \
-                      -v $(pwd)/final_results:/out \
-                      alpine \
-                      sh -c "cp -r /plots/* /out/ || true"
-
-                  echo "=== FINAL FILES ==="
-                  ls -R final_results || true
+                  docker compose logs module_data_load
+                  docker compose logs module_data_quality
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
