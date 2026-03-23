@@ -18,6 +18,7 @@ jobs:
               run: |
                   mkdir -p data
                   if [ -f scripts/get_data.py ]; then python scripts/get_data.py; fi
+
             - name: Create dummy .env file
               run: |
                   echo "POSTGRES_USER=postgres" >> .env
@@ -29,18 +30,28 @@ jobs:
 
             - name: Run Data Pipeline via Docker
               run: |
-                  docker compose -p my_project up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
+                  docker compose up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
 
             - name: Extract artifacts directly from containers
               run: |
-                  mkdir -p final_results
+                  # Створюємо локальні папки для результатів
+                  mkdir -p final_results/quality_reports
+                  mkdir -p final_results/research_reports
+                  mkdir -p final_results/all_plots
 
-                  # Копіюємо файли. Додаємо || true, щоб пайплайн не впав, якщо папка пуста
-                  docker cp module_data_quality:/app/reports ./final_results/quality_reports || true
-                  docker cp module_data_research:/app/reports ./final_results/research_reports || true
-                  docker cp module_visualization:/app/plots ./final_results/all_plots || true
+                  # Знаходимо ТОЧНІ ID контейнерів (навіть зупинених)
+                  ID_QUALITY=$(docker compose ps -qa data_quality_analysis)
+                  ID_RESEARCH=$(docker compose ps -qa data_research)
+                  ID_VISUAL=$(docker compose ps -qa visualization)
 
-                  # НАЙГОЛОВНІШЕ: Друкуємо структуру того, що дістали!
+                  echo "Знайдені ID: Якість=$ID_QUALITY, Дослідження=$ID_RESEARCH, Візуал=$ID_VISUAL"
+
+                  # Копіюємо вміст папок (символ /. означає "скопіюй те, що всередині")
+                  docker cp ${ID_QUALITY}:/app/reports/. ./final_results/quality_reports/
+                  docker cp ${ID_RESEARCH}:/app/reports/. ./final_results/research_reports/
+                  docker cp ${ID_VISUAL}:/app/plots/. ./final_results/all_plots/
+
+                  # Показуємо в логах структуру того, що дістали
                   echo "--- ЩО МИ ДІСТАЛИ З ДОКЕРУ: ---"
                   ls -R ./final_results
                   echo "--------------------------------"
