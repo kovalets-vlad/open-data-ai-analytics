@@ -17,9 +17,10 @@ jobs:
             - name: Prepare raw data
               run: |
                   mkdir -p data/raw
-                  if [ -f scripts/get_data.py ]; then python scripts/get_data.py; fi
+                  # Спробуємо знайти ваш скрипт завантаження, де б він не був
+                  find . -name "get_data.py" -exec python {} \; || echo "get_data.py не знайдено"
 
-            - name: Create dummy .env file
+            - name: Create .env
               run: |
                   echo "POSTGRES_USER=postgres" >> .env
                   echo "POSTGRES_PASSWORD=admin" >> .env
@@ -28,37 +29,52 @@ jobs:
                   echo "POSTGRES_PORT=5432" >> .env
                   echo "DATABASE_URL=postgresql://postgres:admin@db:5432/equipment_db" >> .env
 
-            - name: Run Data Pipeline via Docker
+            - name: Run Data Pipeline
               run: |
                   docker compose up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
 
-            - name: Extract artifacts directly from containers
+            - name: Check Container Logs
               if: always()
               run: |
-                  mkdir -p final_results/reports
-                  mkdir -p final_results/plots
+                  echo "--- LOGS: DATA LOAD ---"
+                  docker logs module_data_load || true
+                  echo "--- LOGS: QUALITY ANALYSIS ---"
+                  docker logs module_data_quality || true
+                  echo "--- LOGS: RESEARCH ---"
+                  docker logs module_data_research || true
+                  echo "--- LOGS: VISUALIZATION ---"
+                  docker logs module_visualization || true
 
-                  # Отримуємо ID контейнерів за назвою сервісу з compose.yaml
-                  ID_QUALITY=$(docker compose ps -qa data_quality_analysis)
-                  ID_RESEARCH=$(docker compose ps -qa data_research)
-                  ID_VISUAL=$(docker compose ps -qa visualization)
+            - name: Extract artifacts
+              if: always()
+              run: |
+                  mkdir -p final_results
 
-                  echo "Контейнери знайдено: Quality=$ID_QUALITY, Research=$ID_RESEARCH, Visual=$ID_VISUAL"
+                  # Шукаємо ID
+                  ID_Q=$(docker ps -aqf "name=module_data_quality")
+                  ID_R=$(docker ps -aqf "name=module_data_research")
+                  ID_V=$(docker ps -aqf "name=module_visualization")
 
-                  docker cp ${ID_QUALITY}:/app/reports/. ./final_results/reports/ || echo "Quality reports not found"
-                  docker cp ${ID_RESEARCH}:/app/reports/. ./final_results/reports/ || echo "Research reports not found"
-                  docker cp ${ID_VISUAL}:/app/plots/. ./final_results/plots/ || echo "Plots not found"
+                  echo "ID контейнерів: $ID_Q, $ID_R, $ID_V"
 
-                  echo "--- СТРУКТУРА ЗІБРАНИХ АРТЕФАКТІВ ---"
-                  find ./final_results -maxdepth 3 -not -path '*/.*'
-                  echo "-------------------------------------"
+                  # Крок розпачу: шукаємо .json та .png файли ПО ВСЬОМУ контейнеру і копіюємо їх
+                  echo "Шукаємо та копіюємо файли..."
+                  docker exec $ID_Q find /app -name "*.json" -exec docker cp $ID_Q:{} ./final_results/ \; || true
+                  docker exec $ID_R find /app -name "*.json" -exec docker cp $ID_R:{} ./final_results/ \; || true
+                  docker exec $ID_V find /app -name "*.png" -exec docker cp $ID_V:{} ./final_results/ \; || true
 
-            - name: Show Docker Logs on Failure
-              if: failure()
-              run: docker compose logs
+                  # Традиційне копіювання (про всяк випадок)
+                  docker cp $ID_Q:/app/reports/. ./final_results/ || echo "No reports in Quality"
+                  docker cp $ID_R:/app/reports/. ./final_results/ || echo "No reports in Research"
+                  docker cp $ID_V:/app/plots/. ./final_results/ || echo "No plots in Visual"
+
+                  echo "--- ФІНАЛЬНИЙ СПИСОК ФАЙЛІВ ПЕРЕД ЗАВАНТАЖЕННЯМ ---"
+                  ls -R ./final_results
+                  echo "------------------------------------------------"
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
+              if: always()
               with:
                   name: analytics-docker-results
                   path: final_results/
