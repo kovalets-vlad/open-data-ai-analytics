@@ -29,12 +29,12 @@ jobs:
 
             - name: Run Data Pipeline via Docker
               run: |
-                  docker compose up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
+                  docker compose -p my_project up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
 
             - name: Extract artifacts from Docker volumes
               run: |
-                  docker run --rm -v ${{ github.workspace }}/reports:/out -v reports_data:/reports alpine cp -r /reports/. /out/
-                  docker run --rm -v ${{ github.workspace }}/plots:/out -v plots_data:/plots alpine cp -r /plots/. /out/
+                  docker run --rm -v ${{ github.workspace }}/reports:/out -v my_project_reports_data:/reports alpine cp -r /reports/. /out/
+                  docker run --rm -v ${{ github.workspace }}/plots:/out -v my_project_plots_data:/plots alpine cp -r /plots/. /out/
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
