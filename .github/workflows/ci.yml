@@ -16,8 +16,24 @@ jobs:
 
             - name: Prepare raw data
               run: |
-                  mkdir -p data
-                  if [ -f scripts/get_data.py ]; then python scripts/get_data.py; fi
+                  mkdir -p data/raw
+
+                  # Запускаємо ваш скрипт завантаження
+                  if [ -f scripts/get_data.py ]; then 
+                    python scripts/get_data.py
+                  fi
+
+                  # ФІКС: Якщо файл зберігся в open-data-ai-analytics/data/raw/, 
+                  # переносимо його в корінь ./data/raw/ щоб Docker його побачив
+                  if [ -d "open-data-ai-analytics/data/raw" ]; then
+                    cp -r open-data-ai-analytics/data/raw/. ./data/raw/
+                  fi
+
+                  # ПЕРЕВІРКА: ми маємо побачити файл тут перед запуском Docker
+                  echo "--- ПЕРЕВІРКА ПАПКИ DATA (на хості) ---"
+                  ls -R data/
+                  echo "---------------------------------------"
+
             - name: Create dummy .env file
               run: |
                   echo "POSTGRES_USER=postgres" >> .env
@@ -31,15 +47,38 @@ jobs:
               run: |
                   docker compose up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
 
-            - name: Extract artifacts from Docker volumes
+            - name: Extract artifacts directly from containers
+              if: always()
               run: |
-                  docker run --rm -v ${{ github.workspace }}/reports:/out -v reports_data:/reports alpine cp -r /reports/. /out/
-                  docker run --rm -v ${{ github.workspace }}/plots:/out -v plots_data:/plots alpine cp -r /plots/. /out/
+                  mkdir -p final_results/reports
+                  mkdir -p final_results/plots
+
+                  # Отримуємо ID контейнерів
+                  ID_QUALITY=$(docker compose ps -qa data_quality_analysis)
+                  ID_RESEARCH=$(docker compose ps -qa data_research)
+                  ID_VISUAL=$(docker compose ps -qa visualization)
+
+                  echo "Знайдені ID: Quality=$ID_QUALITY, Research=$ID_RESEARCH, Visual=$ID_VISUAL"
+
+                  # Копіюємо звіти та графіки
+                  docker cp ${ID_QUALITY}:/app/reports/. ./final_results/reports/ || echo "No quality reports"
+                  docker cp ${ID_RESEARCH}:/app/reports/. ./final_results/reports/ || echo "No research reports"
+                  docker cp ${ID_VISUAL}:/app/plots/. ./final_results/plots/ || echo "No plots found"
+
+                  # ДЕБАГ: Показуємо структуру того, що дістали
+                  echo "--- СТРУКТУРА ЗІБРАНИХ АРТЕФАКТІВ ---"
+                  find ./final_results -maxdepth 3 -not -path '*/.*'
+                  echo "-------------------------------------"
+
+            - name: Show Docker Logs on Failure
+              if: failure()
+              run: |
+                  docker compose logs module_data_load
+                  docker compose logs module_data_quality
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
+              if: always()
               with:
                   name: analytics-docker-results
-                  path: |
-                      reports/
-                      plots/
+                  path: final_results/
