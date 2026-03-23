@@ -1,88 +1,37 @@
-name: CI Pipeline
+name: Docker CI Pipeline
 
 on:
     push:
         branches: ["main"]
     pull_request:
         branches: ["main"]
-    workflow_dispatch:
-        inputs:
-            module:
-                description: "Оберіть модуль (або 'all')"
-                required: true
-                default: "all"
-                type: choice
-                options:
-                    - all
-                    - get_data
-                    - data_load
-                    - data_quality_analysis
-                    - data_research
-                    - visualization
 
 jobs:
-    run-modules:
+    docker-test:
         runs-on: ubuntu-latest
 
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - name: get_data
-                      path: scripts/get_data.py
-                    - name: data_load
-                      path: src/data_load/data_load.py
-                    - name: data_quality_analysis
-                      path: src/data_quality_analysis/data_quality_analysis.py
-                    - name: data_research
-                      path: src/data_research/data_research.py
-                    - name: visualization
-                      path: src/visualization/visualization.py
-
         steps:
-            - name: Перевірка умов запуску
-              run: |
-                  if [ "${{ github.event_name }}" != "workflow_dispatch" ] || [ "${{ github.event.inputs.module }}" == "all" ] || [ "${{ github.event.inputs.module }}" == "${{ matrix.name }}" ]; then
-                    echo "SHOULD_RUN=true" >> "$GITHUB_ENV"
-                  else
-                    echo "SHOULD_RUN=false" >> "$GITHUB_ENV"
-                  fi
-
-            - name: Checkout
-              if: env.SHOULD_RUN == 'true'
+            - name: Checkout code
               uses: actions/checkout@v4
 
-            - name: Setup Python
-              if: env.SHOULD_RUN == 'true'
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.11"
-                  cache: "pip"
-
-            - name: Install dependencies
-              if: env.SHOULD_RUN == 'true'
+            - name: Prepare raw data
               run: |
-                  python -m pip install --upgrade pip
-                  if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+                  mkdir -p data
+                  if [ -f scripts/get_data.py ]; then python scripts/get_data.py; fi
 
-            - name: Download raw data (Dependency)
-              if: env.SHOULD_RUN == 'true' && matrix.name != 'get_data'
-              run: python scripts/get_data.py
-
-            - name: Preprocess data (Dependency)
-              if: env.SHOULD_RUN == 'true' && matrix.name != 'get_data' && matrix.name != 'data_load'
-              run: python src/data_load/data_load.py
-
-            - name: Run target module
-              if: env.SHOULD_RUN == 'true'
+            - name: Run Data Pipeline via Docker
               run: |
-                  mkdir -p artifacts/${{ matrix.name }}
-                  # Виконуємо скрипт і записуємо консольний вивід у лог-файл
-                  python ${{ matrix.path }} > artifacts/${{ matrix.name }}/run.log 2>&1
+                  docker compose up --build data_load data_quality_analysis data_research visualization --abort-on-container-exit
 
-            - name: Upload artifacts
-              if: env.SHOULD_RUN == 'true'
+            - name: Extract artifacts from Docker volumes
+              run: |
+                  docker run --rm -v ${{ github.workspace }}/reports:/out -v reports_data:/reports alpine cp -r /reports/. /out/
+                  docker run --rm -v ${{ github.workspace }}/plots:/out -v plots_data:/plots alpine cp -r /plots/. /out/
+
+            - name: Upload Artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: results-${{ matrix.name }}
-                  path: artifacts/
+                  name: analytics-docker-results
+                  path: |
+                      reports/
+                      plots/
