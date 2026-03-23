@@ -33,18 +33,20 @@ jobs:
 
             - name: Extract artifacts directly from containers
               run: |
-                  # Створюємо порожні папки на віртуальній машині
-                  mkdir -p extracted_reports extracted_plots
+                  mkdir -p final_results
 
-                  # Копіюємо файли з зупинених контейнерів у ці папки
-                  docker cp module_data_quality:/app/reports/. ./extracted_reports/
-                  docker cp module_data_research:/app/reports/. ./extracted_reports/
-                  docker cp module_visualization:/app/plots/. ./extracted_plots/
+                  # Копіюємо файли. Додаємо || true, щоб пайплайн не впав, якщо папка пуста
+                  docker cp module_data_quality:/app/reports ./final_results/quality_reports || true
+                  docker cp module_data_research:/app/reports ./final_results/research_reports || true
+                  docker cp module_visualization:/app/plots ./final_results/all_plots || true
+
+                  # НАЙГОЛОВНІШЕ: Друкуємо структуру того, що дістали!
+                  echo "--- ЩО МИ ДІСТАЛИ З ДОКЕРУ: ---"
+                  ls -R ./final_results
+                  echo "--------------------------------"
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
               with:
                   name: analytics-docker-results
-                  path: |
-                      extracted_reports/
-                      extracted_plots/
+                  path: final_results/
