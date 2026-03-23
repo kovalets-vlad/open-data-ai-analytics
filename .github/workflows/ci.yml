@@ -34,27 +34,23 @@ jobs:
 
             - name: Extract artifacts directly from containers
               run: |
-                  # Створюємо локальні папки для результатів
                   mkdir -p final_results/quality_reports
                   mkdir -p final_results/research_reports
                   mkdir -p final_results/all_plots
 
-                  # Знаходимо ТОЧНІ ID контейнерів (навіть зупинених)
                   ID_QUALITY=$(docker compose ps -qa data_quality_analysis)
                   ID_RESEARCH=$(docker compose ps -qa data_research)
                   ID_VISUAL=$(docker compose ps -qa visualization)
 
-                  echo "Знайдені ID: Якість=$ID_QUALITY, Дослідження=$ID_RESEARCH, Візуал=$ID_VISUAL"
+                  docker cp ${ID_QUALITY}:/app/. ./final_results/quality_reports/ || true
+                  docker cp ${ID_RESEARCH}:/app/. ./final_results/research_reports/ || true
+                  docker cp ${ID_VISUAL}:/app/. ./final_results/all_plots/ || true
 
-                  # Копіюємо вміст папок (символ /. означає "скопіюй те, що всередині")
-                  docker cp ${ID_QUALITY}:/app/reports/. ./final_results/quality_reports/
-                  docker cp ${ID_RESEARCH}:/app/reports/. ./final_results/research_reports/
-                  docker cp ${ID_VISUAL}:/app/plots/. ./final_results/all_plots/
+                  find ./final_results -name "*.py" -type f -delete
+                  find ./final_results -name "requirements.txt" -type f -delete
 
-                  # Показуємо в логах структуру того, що дістали
-                  echo "--- ЩО МИ ДІСТАЛИ З ДОКЕРУ: ---"
+                  echo "--- ПЕРЕВІРКА ПІСЛЯ КОПІЮВАННЯ ВМОРУ: ---"
                   ls -R ./final_results
-                  echo "--------------------------------"
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
