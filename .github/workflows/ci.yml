@@ -16,9 +16,9 @@ jobs:
 
             - name: Prepare raw data
               run: |
-                  mkdir -p data/raw
-                  # Спробуємо знайти ваш скрипт завантаження, де б він не був
-                  find . -name "get_data.py" -exec python {} \; || echo "get_data.py не знайдено"
+                  python scripts/get_data.py
+                  echo "=== DATA CHECK ==="
+                  ls -R data
 
             - name: Create .env
               run: |
