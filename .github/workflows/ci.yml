@@ -34,23 +34,25 @@ jobs:
 
             - name: Extract artifacts directly from containers
               run: |
-                  mkdir -p final_results/quality_reports
-                  mkdir -p final_results/research_reports
-                  mkdir -p final_results/all_plots
+                  mkdir -p final_results/reports
+                  mkdir -p final_results/plots
 
                   ID_QUALITY=$(docker compose ps -qa data_quality_analysis)
                   ID_RESEARCH=$(docker compose ps -qa data_research)
                   ID_VISUAL=$(docker compose ps -qa visualization)
 
-                  docker cp ${ID_QUALITY}:/app/. ./final_results/quality_reports/ || true
-                  docker cp ${ID_RESEARCH}:/app/. ./final_results/research_reports/ || true
-                  docker cp ${ID_VISUAL}:/app/. ./final_results/all_plots/ || true
+                  # Копіюємо конкретні файли, а не папки (це надійніше)
+                  echo "Копіювання звітів..."
+                  docker cp ${ID_QUALITY}:/app/reports/quality_report.json ./final_results/reports/ || echo "Quality report not found"
+                  docker cp ${ID_RESEARCH}:/app/reports/research_report.json ./final_results/reports/ || echo "Research report not found"
 
-                  find ./final_results -name "*.py" -type f -delete
-                  find ./final_results -name "requirements.txt" -type f -delete
+                  echo "Копіювання графіків..."
+                  # Копіюємо весь вміст папки plots
+                  docker cp ${ID_VISUAL}:/app/plots/. ./final_results/plots/ || echo "Plots not found"
 
-                  echo "--- ПЕРЕВІРКА ПІСЛЯ КОПІЮВАННЯ ВМОРУ: ---"
-                  ls -R ./final_results
+                  echo "--- ФІНАЛЬНА ПЕРЕВІРКА ВМІСТУ ПАПОК: ---"
+                  find ./final_results -maxdepth 3 -not -path '*/.*'
+                  echo "----------------------------------------"
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
