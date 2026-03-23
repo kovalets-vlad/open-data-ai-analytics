@@ -1,0 +1,76 @@
+version: "3.8"
+
+volumes:
+    postgres_data:
+    reports_data:
+    plots_data:
+
+services:
+    db:
+        image: postgres:15-alpine
+        container_name: equipment_db
+        env_file: .env
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d equipment_db"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    data_load:
+        build: ./src/data_load
+        container_name: module_data_load
+        env_file: .env
+        volumes:
+            - ./data:/app/data
+        depends_on:
+            db:
+                condition: service_healthy
+
+    data_quality_analysis:
+        build: ./src/data_quality_analysis
+        container_name: module_data_quality
+        env_file: .env
+        volumes:
+            - reports_data:/app/reports
+        depends_on:
+            data_load:
+                condition: service_completed_successfully
+
+    data_research:
+        build: ./src/data_research
+        container_name: module_data_research
+        env_file: .env
+        volumes:
+            - reports_data:/app/reports
+        depends_on:
+            data_load:
+                condition: service_completed_successfully
+
+    visualization:
+        build: ./src/visualization
+        container_name: module_visualization
+        env_file: .env
+        volumes:
+            - plots_data:/app/plots
+        depends_on:
+            data_load:
+                condition: service_completed_successfully
+
+    web:
+        build: ./src/web
+        container_name: equipment_web
+        env_file: .env
+        ports:
+            - "5000:5000"
+        volumes:
+            - reports_data:/app/reports:ro
+            - plots_data:/app/static/plots:ro
+        depends_on:
+            db:
+                condition: service_healthy
+            visualization:
+                condition: service_completed_successfully

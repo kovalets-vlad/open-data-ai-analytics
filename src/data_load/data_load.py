@@ -1,13 +1,20 @@
+import os
 import pandas as pd
-import sqlite3
+from sqlalchemy import create_engine
 
-def load_and_preprocess_data(csv_path: str, db_path: str = "equipment.db", table_name: str = "equipment_data") -> pd.DataFrame:
-    """Читає CSV, очищає дані та зберігає їх у базу даних."""
+def main():
+    csv_path = '/app/data/raw/equipment_data.csv'
+    db_url = os.getenv("DATABASE_URL", "postgresql://postgres:admin@db:5432/equipment_db")
     
+    print(f"Починаємо завантаження даних з {csv_path}...")
+    
+    if not os.path.exists(csv_path):
+        print(f"❌ Помилка: Файл {csv_path} не знайдено!")
+        return
+
     df = pd.read_csv(csv_path)
 
     df['dateReceived'] = pd.to_datetime(df['dateReceived'], errors='coerce')
-
     cols_to_fix = ['primaryAmountValue', 'amortizationAmountValue', 'bookAmountValue', 'wearPercentage']
     for col in cols_to_fix:
         if col in df.columns:
@@ -22,18 +29,10 @@ def load_and_preprocess_data(csv_path: str, db_path: str = "equipment.db", table
     mask = df['wearPercentage'].isna() & (df['primaryAmountValue'] > 0)
     df.loc[mask, 'wearPercentage'] = (df['amortizationAmountValue'] / df['primaryAmountValue']) * 100
 
-    with sqlite3.connect(db_path) as conn:
-        df.to_sql(table_name, conn, if_exists='replace', index=False)
-        print(f"--- Дані успішно завантажено у таблицю '{table_name}' БД '{db_path}' ---")
-
-    return df
+    engine = create_engine(db_url)
+    df.to_sql('equipment_data', engine, if_exists='replace', index=False)
+    
+    print("✅ Дані успішно очищено та завантажено в базу даних PostgreSQL!")
 
 if __name__ == "__main__":
-    import os
-    csv_path = 'open-data-ai-analytics/data/raw/equipment_data.csv'
-    
-    if os.path.exists(csv_path):
-        print(f"Запуск data_load.py: обробка файлу {csv_path}...")
-        load_and_preprocess_data(csv_path)
-    else:
-        print(f"❌ Помилка: Файл {csv_path} не знайдено. Спочатку переконайтеся, що відпрацював get_data.py")
+    main()

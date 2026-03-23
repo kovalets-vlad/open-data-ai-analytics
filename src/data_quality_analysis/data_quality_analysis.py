@@ -1,42 +1,41 @@
+import os
+import json
 import pandas as pd
+from sqlalchemy import create_engine
 
-def analyze_data_quality(df: pd.DataFrame) -> pd.DataFrame:
+def main():
+    db_url = os.getenv("DATABASE_URL", "postgresql://postgres:admin@db:5432/equipment_db")
+    engine = create_engine(db_url)
     
-    missing_data = df.isnull().sum()
-    missing_percent = (df.isnull().sum() / len(df)) * 100
-    duplicates = df.duplicated().sum()
-    unique_values = df.nunique()
+    print("Зчитування даних з БД для аналізу якості...")
+    df = pd.read_sql("SELECT * FROM equipment_data", engine)
 
-    quality_report = pd.DataFrame({
-        'Missing Values': missing_data,
-        'Percentage (%)': missing_percent.round(2),
-        'Unique Values': unique_values,
-        'Data Type': df.dtypes
-    })
+    missing_data = df.isnull().sum().to_dict()
+    missing_percent = ((df.isnull().sum() / len(df)) * 100).round(2).to_dict()
+    duplicates = int(df.duplicated().sum())
+    total_rows = len(df)
 
-    print("\n--- Звіт про якість даних ---")
-    print(f"Загальна кількість рядків: {len(df)}")
-    print(f"Знайдено повних дублікатів: {duplicates}")
-    print("\nДеталізація по колонках:")
-    print(quality_report)
+    # Формуємо звіт
+    report = {
+        "total_rows": total_rows,
+        "duplicates": duplicates,
+        "columns_quality": {}
+    }
+    
+    for col in df.columns:
+        report["columns_quality"][col] = {
+            "missing_values": int(missing_data[col]),
+            "missing_percentage": float(missing_percent[col])
+        }
 
-    if 'dateReceived' in df.columns:
-        nat_counts = df['dateReceived'].isna().sum()
-        if nat_counts > 0:
-            print(f"\n⚠️ Увага: {nat_counts} дат не вдалося розпізнати (стали NaT).")
-
-    return quality_report
+    # Зберігаємо у спільний том
+    os.makedirs('/app/reports', exist_ok=True)
+    report_path = '/app/reports/quality_report.json'
+    
+    with open(report_path, 'w', encoding='utf-8') as f:
+        json.dump(report, f, ensure_ascii=False, indent=4)
+        
+    print(f"✅ Звіт про якість даних збережено у {report_path}")
 
 if __name__ == "__main__":
-    import os
-    import sqlite3
-
-    db_path = "equipment.db"
-    if os.path.exists(db_path):
-        print("Запуск data_quality_analysis.py: читання БД...")
-        with sqlite3.connect(db_path) as conn:
-            df = pd.read_sql("SELECT * FROM equipment_data", conn)
-        
-        analyze_data_quality(df)
-    else:
-        print(f"❌ Помилка: Базу даних {db_path} не знайдено. Спочатку запустіть data_load.py")
+    main()
