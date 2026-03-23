@@ -50,27 +50,22 @@ jobs:
               run: |
                   mkdir -p final_results
 
-                  # Шукаємо ID
-                  ID_Q=$(docker ps -aqf "name=module_data_quality")
-                  ID_R=$(docker ps -aqf "name=module_data_research")
-                  ID_V=$(docker ps -aqf "name=module_visualization")
+                  echo "=== COPY FROM VOLUMES ==="
 
-                  echo "ID контейнерів: $ID_Q, $ID_R, $ID_V"
+                  docker run --rm \
+                      -v reports_data:/reports \
+                      -v $(pwd)/final_results:/out \
+                      alpine \
+                      sh -c "cp -r /reports/* /out/ || true"
 
-                  # Крок розпачу: шукаємо .json та .png файли ПО ВСЬОМУ контейнеру і копіюємо їх
-                  echo "Шукаємо та копіюємо файли..."
-                  docker exec $ID_Q find /app -name "*.json" -exec docker cp $ID_Q:{} ./final_results/ \; || true
-                  docker exec $ID_R find /app -name "*.json" -exec docker cp $ID_R:{} ./final_results/ \; || true
-                  docker exec $ID_V find /app -name "*.png" -exec docker cp $ID_V:{} ./final_results/ \; || true
+                  docker run --rm \
+                      -v plots_data:/plots \
+                      -v $(pwd)/final_results:/out \
+                      alpine \
+                      sh -c "cp -r /plots/* /out/ || true"
 
-                  # Традиційне копіювання (про всяк випадок)
-                  docker cp $ID_Q:/app/reports/. ./final_results/ || echo "No reports in Quality"
-                  docker cp $ID_R:/app/reports/. ./final_results/ || echo "No reports in Research"
-                  docker cp $ID_V:/app/plots/. ./final_results/ || echo "No plots in Visual"
-
-                  echo "--- ФІНАЛЬНИЙ СПИСОК ФАЙЛІВ ПЕРЕД ЗАВАНТАЖЕННЯМ ---"
-                  ls -R ./final_results
-                  echo "------------------------------------------------"
+                  echo "=== FINAL FILES ==="
+                  ls -R final_results || true
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
