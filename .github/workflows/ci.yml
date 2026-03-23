@@ -31,13 +31,13 @@ jobs:
                     - name: get_data
                       path: scripts/get_data.py
                     - name: data_load
-                      path: src/data_load.py
+                      path: src/data_load/data_load.py
                     - name: data_quality_analysis
-                      path: src/data_quality_analysis.py
+                      path: src/data_quality_analysis/data_quality_analysis.py
                     - name: data_research
-                      path: src/data_research.py
+                      path: src/data_research/data_research.py
                     - name: visualization
-                      path: src/visualization.py
+                      path: src/visualization/visualization.py
 
         steps:
             - name: Перевірка умов запуску
