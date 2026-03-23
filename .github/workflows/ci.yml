@@ -71,7 +71,7 @@ jobs:
 
             - name: Preprocess data (Dependency)
               if: env.SHOULD_RUN == 'true' && matrix.name != 'get_data' && matrix.name != 'data_load'
-              run: python src/data_load.py
+              run: python src/data_load/data_load.py
 
             - name: Run target module
               if: env.SHOULD_RUN == 'true'
