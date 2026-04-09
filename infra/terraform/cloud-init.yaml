@@ -1,0 +1,17 @@
+package_update: true
+package_upgrade: true
+
+packages:
+    - git
+    - curl
+
+runcmd:
+    - curl -fsSL https://get.docker.com -o get-docker.sh
+    - sh get-docker.sh
+
+    - usermod -aG docker azureuser
+
+    - git clone https://github.com/kovalets-vlad/open-data-ai-analytics.git /home/azureuser/app
+
+    - cd /home/azureuser/app
+    - docker compose up -d --build
