@@ -20,6 +20,8 @@ runcmd:
     - echo "POSTGRES_HOST=db" >> .env
     - echo "POSTGRES_PORT=5432" >> .env
     - echo "DATABASE_URL=postgresql://postgres:admin@db:5432/equipment_db" >> .env
+    - echo "GRAFANA_USER=admin" >> .env
+    - echo "GRAFANA_PASSWORD=DevOps_Grafana_20!" >> .env
 
     - pip3 install pandas requests
     - mkdir -p data/raw
@@ -27,3 +29,6 @@ runcmd:
     - cp open-data-ai-analytics/data/raw/equipment_data.csv ./data/raw/ || true
 
     - docker compose up -d --build
+
+    - cd /home/azureuser/app/monitoring
+    - docker compose -f docker-compose.monitoring.yml up -d
