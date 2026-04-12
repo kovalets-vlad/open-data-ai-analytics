@@ -15,6 +15,19 @@ spec:
         spec:
             containers:
                 - name: web-container
-                  image: k0va1ets/ai-analytics-web:v1
+                  image: ТВІЙ_ЛОГІН/ai-analytics-web:v1
                   ports:
-                      - containerPort: 80
+                      - containerPort: 5000
+                  env:
+                      - name: POSTGRES_USER
+                        value: "postgres"
+                      - name: POSTGRES_PASSWORD
+                        value: "admin"
+                      - name: POSTGRES_DB
+                        value: "equipment_db"
+                      - name: POSTGRES_PORT
+                        value: "5432"
+                      - name: POSTGRES_HOST
+                        value: "10.0.1.4"
+                      - name: DATABASE_URL
+                        value: "postgresql://postgres:admin@10.0.1.4:5432/equipment_db"
