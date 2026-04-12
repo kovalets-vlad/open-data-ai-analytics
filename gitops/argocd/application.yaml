@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+    name: ai-analytics-gitops
+    namespace: argocd
+spec:
+    project: default
+    source:
+        repoURL: "https://github.com/kovalets-vlad/open-data-ai-analytics.git"
+        targetRevision: feature/GitOps
+        path: gitops/app
+    destination:
+        server: "https://kubernetes.default.svc"
+        namespace: ai-analytics
+    syncPolicy:
+        automated:
+            prune: true
+            selfHeal: true
+        syncOptions:
+            - CreateNamespace=true

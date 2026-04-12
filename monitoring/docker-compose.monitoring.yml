@@ -41,7 +41,7 @@ services:
             - default_net
 
     cadvisor:
-        image: gcr.io/cadvisor/cadvisor:v0.49.0
+        image: gcr.io/cadvisor/cadvisor:v0.47.2
         container_name: cadvisor
         privileged: true
         restart: unless-stopped
@@ -57,4 +57,4 @@ services:
 networks:
     default_net:
         external: true
-        name: open-data-ai-analytics_default
+        name: app_default
