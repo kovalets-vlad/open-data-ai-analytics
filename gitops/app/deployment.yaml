@@ -31,3 +31,21 @@ spec:
                         value: "10.0.1.4"
                       - name: DATABASE_URL
                         value: "postgresql://postgres:admin@10.0.1.4:5432/equipment_db"
+
+                  volumeMounts:
+                      - name: plots-volume
+                        mountPath: /app/static/plots
+                        readOnly: true
+                      - name: reports-volume
+                        mountPath: /app/reports
+                        readOnly: true
+
+            volumes:
+                - name: plots-volume
+                  hostPath:
+                      path: /var/lib/docker/volumes/app_plots_data/_data
+                      type: Directory
+                - name: reports-volume
+                  hostPath:
+                      path: /var/lib/docker/volumes/app_reports_data/_data
+                      type: Directory
