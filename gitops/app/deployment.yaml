@@ -15,7 +15,7 @@ spec:
         spec:
             containers:
                 - name: web-container
-                  image: ТВІЙ_ЛОГІН/ai-analytics-web:v1
+                  image: k0va1ets/ai-analytics-web:v1
                   ports:
                       - containerPort: 5000
                   env:
