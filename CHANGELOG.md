@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.1.5] - 2026-04-12
+
+### Added
+
+- **GitOps Implementation**:
+    - Integrated **Argo CD** for automated deployment and synchronization of Kubernetes manifests.
+    - Implemented a "Pull-based" CD model, ensuring the cluster state matches the GitHub `feature/GitOps` branch.
+- **Kubernetes Orchestration (k3s)**:
+    - Migrated the Flask Web Dashboard from Docker Compose to **Kubernetes (k3s)**.
+    - Defined declarative manifests for `Deployment`, `Service` (NodePort), and `Namespace`.
+    - Implemented automated scaling and self-healing policies for web-pods.
+- **Infrastructure as Code (IaC)**:
+    - Added **Terraform** configurations to automate Azure VM and Networking provisioning.
+    - Utilized **Cloud-init** for automated post-provisioning (installing Docker, k3s, and Argo CD).
+- **Hybrid Service Integration**:
+    - Established cross-environment networking allowing K8s pods to communicate with a **PostgreSQL** instance running in Docker.
+    - Implemented **hostPath Volume Mounting** to bridge Docker-managed volumes (`plots_data`, `reports_data`) with Kubernetes pods for real-time analytics display.
+
+### Changed
+
+- **Deployment Strategy**: Shifted from manual `docker-compose` execution to a full GitOps lifecycle.
+- **Resource Management**: Optimized container resource allocation using Kubernetes-native scaling (replicas).
+- **Environment Isolation**: Introduced dedicated Kubernetes Namespaces for better logical separation of analytics services.
+
+### Fixed
+
+- **Persistence Bridge**: Resolved data invisibility in K8s pods by correctly mapping physical Docker volume mountpoints on the host.
+- **Network Resolution**: Fixed "Connection Refused" errors by implementing host-gateway routing for K8s-to-Docker communication.
+- **Firewall Deadlocks**: Resolved access issues to Argo CD and Web interfaces by automating Azure NSG rule provisioning via Terraform.
+
 ## [0.1.4] - 2026-03-23
 
 ### Added
