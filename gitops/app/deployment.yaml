@@ -4,7 +4,7 @@ metadata:
     name: web-deployment
     namespace: ai-analytics
 spec:
-    replicas: 3
+    replicas: 1
     selector:
         matchLabels:
             app: web-app
