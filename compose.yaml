@@ -60,17 +60,17 @@ services:
             data_load:
                 condition: service_completed_successfully
 
-    web:
-        build: ./src/web
-        container_name: equipment_web
-        env_file: .env
-        ports:
-            - "5000:5000"
-        volumes:
-            - reports_data:/app/reports:ro
-            - plots_data:/app/static/plots:ro
-        depends_on:
-            db:
-                condition: service_healthy
-            visualization:
-                condition: service_completed_successfully
+    # web:
+    #     build: ./src/web
+    #     container_name: equipment_web
+    #     env_file: .env
+    #     ports:
+    #         - "5000:5000"
+    #     volumes:
+    #         - reports_data:/app/reports:ro
+    #         - plots_data:/app/static/plots:ro
+    #     depends_on:
+    #         db:
+    #             condition: service_healthy
+    #         visualization:
+    #             condition: service_completed_successfully

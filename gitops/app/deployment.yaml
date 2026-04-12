@@ -15,6 +15,6 @@ spec:
         spec:
             containers:
                 - name: web-container
-                  image: nginx:latest
+                  image: k0va1ets/ai-analytics-web:v1
                   ports:
                       - containerPort: 80
