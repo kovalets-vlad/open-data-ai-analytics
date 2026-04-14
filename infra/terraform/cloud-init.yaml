@@ -34,9 +34,18 @@ runcmd:
     - docker compose -f docker-compose.monitoring.yml up -d
 
     - curl -sfL https://get.k3s.io | sh -
-    - sleep 15 #
-    - export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    - sleep 20
+
+    - mkdir -p /root/.kube
+    - ln -s /etc/rancher/k3s/k3s.yaml /root/.kube/config
     - chmod 644 /etc/rancher/k3s/k3s.yaml
+
     - kubectl create namespace argocd
     - kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
     - kubectl patch svc argocd-server -n argocd -p '{"spec":{"type":"NodePort"}}'
+
+    - echo "Waiting for Argo CD CRDs..."
+    - until kubectl get crd applications.argoproj.io; do sleep 5; done
+
+    - /usr/local/bin/kubectl apply -f /home/azureuser/open-data-ai-analytics/gitops/argocd/application.yaml -n argocd
